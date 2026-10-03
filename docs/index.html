@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NearMe \u2014 Least Severe Route Finder</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div id="sidebar">
+        <h1>\ud83d\ude98 NearMe Route Finder</h1>
+        <p class="subtitle">Find the least severe driving route across North Carolina</p>
+
+        <div class="input-group">
+            <label for="start-input">\ud83d\udfe0 Start Location</label>
+            <input type="text" id="start-input" placeholder="e.g., Raleigh, NC or 35.78, -78.64" />
+            <div id="start-coords" class="coords-display"></div>
+        </div>
+
+        <div class="input-group">
+            <label for="end-input">\ud83d\udd34 End Location</label>
+            <input type="text" id="end-input" placeholder="e.g., Asheville, NC or 35.60, -82.55" />
+            <div id="end-coords" class="coords-display"></div>
+        </div>
+
+        <button id="find-route-btn" onclick="findRoute()">Find Safest Route</button>
+        <button id="clear-btn" onclick="clearRoute()">Clear</button>
+
+        <div id="results" class="results-panel"></div>
+
+        <div class="legend">
+            <h3>Clemency Legend</h3>
+            <div class="legend-item"><span class="dot benign"></span> Benign (mild conditions)</div>
+            <div class="legend-item"><span class="dot mild"></span> Mild</div>
+            <div class="legend-item"><span class="dot moderate"></span> Moderate</div>
+            <div class="legend-item"><span class="dot severe"></span> Severe</div>
+            <div class="legend-item"><span class="dot extreme"></span> Extreme (avoid)</div>
+        </div>
+
+        <div class="instructions">
+            <p><b>Tip:</b> Click on the map to set start/end points, or type a city name or coordinates above.</p>
+            <p>The A* algorithm finds the path with the lowest total environmental severity \u2014 avoiding floods, landslides, crashes, and fire zones.</p>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

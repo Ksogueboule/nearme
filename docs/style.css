@@ -1,0 +1,60 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+
+#sidebar {
+    width: 330px;
+    background: #1a1a2e;
+    color: #eee;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+    flex-shrink: 0;
+}
+
+#map { flex: 1; height: 100vh; }
+
+h1 { font-size: 1.3em; margin-bottom: 4px; color: #3498db; }
+.subtitle { color: #888; font-size: 0.8em; margin-bottom: 18px; }
+
+.input-group { margin-bottom: 14px; }
+.input-group label { display: block; font-size: 0.85em; color: #aaa; margin-bottom: 4px; }
+.input-group input {
+    width: 100%; padding: 8px 10px; border: 1px solid #333; border-radius: 5px;
+    background: #16213e; color: #fff; font-size: 0.9em;
+}
+.input-group input:focus { border-color: #3498db; outline: none; }
+.coords-display { font-size: 0.75em; color: #2ecc71; margin-top: 3px; min-height: 14px; }
+
+button {
+    width: 100%; padding: 10px; margin-top: 6px; border: none; border-radius: 5px;
+    font-size: 0.95em; font-weight: bold; cursor: pointer; transition: opacity 0.2s;
+}
+#find-route-btn { background: #3498db; color: #fff; }
+#find-route-btn:hover { background: #2980b9; }
+#clear-btn { background: #444; color: #ccc; }
+#clear-btn:hover { background: #555; }
+
+.results-panel { margin-top: 16px; }
+.result-card {
+    background: #16213e; border-radius: 8px; padding: 14px; margin-top: 10px;
+    border-left: 4px solid #3498db;
+}
+.result-card h3 { font-size: 1.1em; margin-bottom: 10px; }
+.result-stat { display: flex; justify-content: space-between; font-size: 0.85em; margin: 4px 0; color: #ccc; }
+.result-stat b { color: #fff; }
+.error { color: #e74c3c; padding: 10px; }
+
+.legend { margin-top: 20px; padding-top: 14px; border-top: 1px solid #333; }
+.legend h3 { font-size: 0.9em; color: #aaa; margin-bottom: 8px; }
+.legend-item { font-size: 0.8em; margin: 4px 0; display: flex; align-items: center; }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+.dot.benign { background: #2ecc71; }
+.dot.mild { background: #f1c40f; }
+.dot.moderate { background: #e67e22; }
+.dot.severe { background: #e74c3c; }
+.dot.extreme { background: #8e44ad; }
+
+.instructions { margin-top: 16px; padding-top: 14px; border-top: 1px solid #333; }
+.instructions p { font-size: 0.75em; color: #888; margin-bottom: 8px; line-height: 1.4; }
+
+.leaflet-popup-content { font-size: 0.85em; }
