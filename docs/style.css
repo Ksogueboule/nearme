@@ -126,11 +126,12 @@ button {
 .dot.moderate { background: #e67e22; }
 .dot.severe { background: #e74c3c; }
 .dot.extreme { background: #8e44ad; }
-.dot.cold { background: #3498db; }
-.dot.cool { background: #1abc9c; }
-.dot.mild-wx { background: #2ecc71; }
-.dot.warm { background: #e67e22; }
-.dot.hot { background: #e74c3c; }
+.dot.alert-tornado { background: #e74c3c; }
+.dot.alert-tstorm { background: #e67e22; }
+.dot.alert-flash-flood { background: #8e44ad; }
+.dot.alert-flood { background: #f1c40f; }
+.dot.alert-winter { background: #3498db; }
+.dot.alert-other { background: #95a5a6; }
 
 .instructions { margin-top: 16px; padding-top: 14px; border-top: 1px solid #333; }
 .instructions p { font-size: 0.75em; color: #888; margin-bottom: 8px; line-height: 1.4; }

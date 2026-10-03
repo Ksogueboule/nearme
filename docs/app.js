@@ -6,7 +6,6 @@ let clemencyData = [];
 let startMarker = null, endMarker = null;
 let routeLayer = null, altRouteLayer = null, severityLayer = null, hazardLayer = null;
 let allDataLayer = null, allDataVisible = false;
-let heatmapLayer = null, heatmapVisible = false;
 let weatherLayer = null, weatherVisible = false;
 let startCoords = null, endCoords = null;
 
@@ -121,45 +120,19 @@ function toggleAllData() {
     }
 }
 
-// Toggle heatmap visualization
-function toggleHeatmap() {
-    if (!heatmapLayer) {
-        var heatPoints = clemencyData.map(function(pt) { return [pt[0], pt[1], pt[2]]; });
-        heatmapLayer = L.heatLayer(heatPoints, {
-            radius: 25, blur: 20, maxZoom: 12, max: 0.6,
-            gradient: { 0.0: '#2ecc71', 0.15: '#f1c40f', 0.25: '#e67e22', 0.4: '#e74c3c', 0.55: '#8e44ad', 1.0: '#8e44ad' }
-        });
-    }
-    if (heatmapVisible) {
-        map.removeLayer(heatmapLayer);
-        heatmapVisible = false;
-        var btn = document.getElementById('toggle-heatmap-btn');
-        btn.textContent = 'Show Heatmap';
-        btn.classList.remove('active');
-    } else {
-        heatmapLayer.addTo(map);
-        heatmapVisible = true;
-        var btn = document.getElementById('toggle-heatmap-btn');
-        btn.textContent = 'Hide Heatmap';
-        btn.classList.add('active');
-    }
-}
-
-// Toggle weather overlay from Open-Meteo API
-function weatherDesc(code) {
-    var c = {
-        0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',
-        45:'Fog',48:'Rime fog',
-        51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
-        56:'Freezing drizzle',57:'Freezing drizzle',
-        61:'Light rain',63:'Rain',65:'Heavy rain',
-        66:'Freezing rain',67:'Freezing rain',
-        71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',
-        80:'Rain showers',81:'Rain showers',82:'Violent showers',
-        85:'Snow showers',86:'Snow showers',
-        95:'Thunderstorm',96:'T-storm + hail',99:'T-storm + hail'
-    };
-    return c[code] || 'Code ' + code;
+// Toggle weather overlay from NWS API (api.weather.gov) — active alerts for NC
+function alertColor(event) {
+    var e = (event || '').toLowerCase();
+    if (e.indexOf('tornado') >= 0) return '#e74c3c';
+    if (e.indexOf('severe thunderstorm') >= 0) return '#e67e22';
+    if (e.indexOf('flash flood') >= 0) return '#8e44ad';
+    if (e.indexOf('flood') >= 0) return '#f1c40f';
+    if (e.indexOf('winter') >= 0 || e.indexOf('snow') >= 0 || e.indexOf('ice') >= 0) return '#3498db';
+    if (e.indexOf('heat') >= 0) return '#e74c3c';
+    if (e.indexOf('wind') >= 0) return '#1abc9c';
+    if (e.indexOf('fire') >= 0) return '#e74c3c';
+    if (e.indexOf('marine') >= 0 || e.indexOf('coastal') >= 0) return '#16a085';
+    return '#95a5a6';
 }
 
 async function toggleWeather() {
@@ -172,39 +145,42 @@ async function toggleWeather() {
         return;
     }
     btn.textContent = 'Loading weather...';
-    // Grid of ~35 points across NC
-    var lats = [33.5,34.0,34.5,35.0,35.5,36.0,36.5];
-    var lons = [-84.0,-82.0,-80.0,-78.0,-76.0];
-    var pts = [];
-    for (var i = 0; i < lats.length; i++)
-        for (var j = 0; j < lons.length; j++)
-            pts.push([lats[i], lons[j]]);
     try {
-        var resp = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' +
-            pts.map(p => p[0]).join(',') + '&longitude=' + pts.map(p => p[1]).join(',') +
-            '&current=temperature_2m,precipitation,wind_speed_10m,weather_code,relative_humidity_2m' +
-            '&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch');
+        var resp = await fetch('https://api.weather.gov/alerts/active?area=NC');
         var data = await resp.json();
-        var wd = Array.isArray(data) ? data : [data];
         if (weatherLayer) map.removeLayer(weatherLayer);
         weatherLayer = L.layerGroup();
-        for (var i = 0; i < pts.length && i < wd.length; i++) {
-            var w = wd[i]; if (!w.current) continue;
-            var t = w.current.temperature_2m, p = w.current.precipitation;
-            var ws = w.current.wind_speed_10m, code = w.current.weather_code, h = w.current.relative_humidity_2m;
-            var c = t < 32 ? '#3498db' : t < 50 ? '#1abc9c' : t < 70 ? '#2ecc71' : t < 85 ? '#e67e22' : '#e74c3c';
-            L.circleMarker([pts[i][0], pts[i][1]], { radius: 8, color: c, fillColor: c, fillOpacity: 0.7, weight: 2 })
-                .bindPopup('<b>Weather ' + weatherDesc(code) + '</b><br>' +
-                    Math.round(t) + '\u00b0F \u00b7 ' + p + '" precip<br>' +
-                    Math.round(ws) + ' mph wind \u00b7 ' + h + '% humidity')
-                .addTo(weatherLayer);
+        var alertCount = 0;
+        if (data.features) {
+            for (var i = 0; i < data.features.length; i++) {
+                var f = data.features[i];
+                var event = f.properties.event || 'Weather Alert';
+                var headline = f.properties.headline || event;
+                var severity = f.properties.severity || 'Minor';
+                var area = f.properties.areaDesc || '';
+                var desc = (f.properties.description || '').substring(0, 300);
+                var expires = f.properties.expires || '';
+                var color = alertColor(event);
+                if (f.geometry) {
+                    L.geoJSON(f.geometry, {
+                        style: { color: color, weight: 2, fillColor: color, fillOpacity: 0.25 }
+                    }).bindPopup(
+                        '<b>' + event + '</b><br>' +
+                        '<b>Severity:</b> ' + severity + '<br>' +
+                        '<b>Area:</b> ' + area + '<br>' +
+                        '<b>Expires:</b> ' + (expires ? new Date(expires).toLocaleString() : 'N/A') + '<br><br>' +
+                        desc
+                    ).addTo(weatherLayer);
+                    alertCount++;
+                }
+            }
         }
         weatherLayer.addTo(map);
         weatherVisible = true;
-        btn.textContent = 'Hide Weather';
+        btn.textContent = alertCount > 0 ? 'Hide Weather (' + alertCount + ' alerts)' : 'Hide Weather (no active alerts)';
         btn.classList.add('active');
     } catch (e) {
-        console.error('Weather fetch failed:', e);
+        console.error('NWS weather fetch failed:', e);
         btn.textContent = 'Show Weather';
         btn.classList.remove('active');
     }
@@ -732,12 +708,6 @@ async function refreshData() {
                 if (allDataLayer) { allDataLayer.remove(); allDataLayer = null; }
                 allDataVisible = false;
                 toggleAllData();
-            }
-            // Rebuild heatmap if visible
-            if (heatmapVisible) {
-                if (heatmapLayer) { map.removeLayer(heatmapLayer); heatmapLayer = null; }
-                heatmapVisible = false;
-                toggleHeatmap();
             }
             // Rebuild weather if visible
             if (weatherVisible) {

@@ -30,7 +30,6 @@
         <button id="refresh-btn" class="refresh-btn" onclick="refreshData()">\u21bb Refresh</button>
         <button id="toggle-data-btn" class="toggle-btn" onclick="toggleAllData()">Show All Data Points</button>
         <span id="data-count" class="data-count"></span>
-        <button id="toggle-heatmap-btn" class="toggle-btn" onclick="toggleHeatmap()">Show Heatmap</button>
         <button id="toggle-weather-btn" class="toggle-btn" onclick="toggleWeather()">Show Weather</button>
 
         <div id="results" class="results-panel"></div>
@@ -46,11 +45,12 @@
             <div class="legend-item"><span class="dot severe"></span> Severe</div>
             <div class="legend-item"><span class="dot extreme"></span> Extreme (avoid)</div>
             <h3 style="margin-top:10px">Weather Legend</h3>
-            <div class="legend-item"><span class="dot cold"></span> &lt;32°F (cold)</div>
-            <div class="legend-item"><span class="dot cool"></span> 32-50°F (cool)</div>
-            <div class="legend-item"><span class="dot mild-wx"></span> 50-70°F (mild)</div>
-            <div class="legend-item"><span class="dot warm"></span> 70-85°F (warm)</div>
-            <div class="legend-item"><span class="dot hot"></span> &gt;85°F (hot)</div>
+            <div class="legend-item"><span class="dot alert-tornado"></span> Tornado Warning</div>
+            <div class="legend-item"><span class="dot alert-tstorm"></span> Severe Thunderstorm</div>
+            <div class="legend-item"><span class="dot alert-flash-flood"></span> Flash Flood</div>
+            <div class="legend-item"><span class="dot alert-flood"></span> Flood Watch/Warning</div>
+            <div class="legend-item"><span class="dot alert-winter"></span> Winter/Snow/Ice</div>
+            <div class="legend-item"><span class="dot alert-other"></span> Other alerts</div>
         </div>
 
         <div class="instructions">
@@ -79,7 +79,6 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/leaflet-heat.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
