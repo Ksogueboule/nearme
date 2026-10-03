@@ -46,7 +46,7 @@ def api_clemency():
         if not warehouse_id:
             return jsonify({'error': 'No SQL warehouse available'}), 503
 
-        result = w.statement_execution.execute(
+        result = w.statement_execution.execute_statement(
             warehouse_id=warehouse_id,
             statement="SELECT latitude, longitude, severity_score, "
                       "clemency_score, source_type, kmeans_clemency, detail "

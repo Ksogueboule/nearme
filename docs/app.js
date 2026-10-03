@@ -148,15 +148,18 @@ function toggleHeatmap() {
 // Toggle weather overlay from Open-Meteo API
 function weatherDesc(code) {
     var c = {
-        0:'\u2600\u-fe0f Clear',1:'\u26c5 Mainly clear',2:'\u26c5 Partly cloudy',3:'\u2601\u-fe0f Overcast',
-        45:'\u{1f32b}\u-fe0f Fog',48:'\u{1f32b}\u-fe0f Rime fog',
-        51:'\u{1f326}\u-fe0f Light drizzle',53:'\u{1f326}\u-fe0f Drizzle',55:'\u{1f327}\u-fe0f Heavy drizzle',
-        61:'\u{1f327}\u-fe0f Light rain',63:'\u{1f327}\u-fe0f Rain',65:'\u{1f327}\u-fe0f Heavy rain',
-        71:'\u{1f328}\u-fe0f Light snow',73:'\u{1f328}\u-fe0f Snow',75:'\u2744\u-fe0f Heavy snow',
-        80:'\u{1f326}\u-fe0f Rain showers',81:'\u{1f327}\u-fe0f Rain showers',82:'\u26c8\u-fe0f Violent showers',
-        95:'\u26c8\u-fe0f Thunderstorm',96:'\u26c8\u-fe0f T-storm + hail',99:'\u26c8\u-fe0f T-storm + hail'
+        0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',
+        45:'Fog',48:'Rime fog',
+        51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
+        56:'Freezing drizzle',57:'Freezing drizzle',
+        61:'Light rain',63:'Rain',65:'Heavy rain',
+        66:'Freezing rain',67:'Freezing rain',
+        71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',
+        80:'Rain showers',81:'Rain showers',82:'Violent showers',
+        85:'Snow showers',86:'Snow showers',
+        95:'Thunderstorm',96:'T-storm + hail',99:'T-storm + hail'
     };
-    return c[code] || 'Weather code ' + code;
+    return c[code] || 'Code ' + code;
 }
 
 async function toggleWeather() {
