@@ -234,6 +234,51 @@ async function findRoute() {
     displayRoute(safeRoad, directRoad, safeStats, directStats);
 }
 
+// Export utilities — Google Maps link, GPX, CSV
+function toGoogleMapsUrl(routeCoords) {
+    var maxWps = 10;
+    var step = Math.max(1, Math.floor(routeCoords.length / maxWps));
+    var pts = [];
+    for (var i = 0; i < routeCoords.length; i += step)
+        pts.push(routeCoords[i][0].toFixed(5) + ',' + routeCoords[i][1].toFixed(5));
+    var last = routeCoords[routeCoords.length - 1];
+    var lastPt = last[0].toFixed(5) + ',' + last[1].toFixed(5);
+    if (pts[pts.length - 1] !== lastPt) pts.push(lastPt);
+    return 'https://www.google.com/maps/dir/' + pts.join('/');
+}
+
+function downloadFile(filename, content, mimeType) {
+    var blob = new Blob([content], { type: mimeType });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function toGPX(routeCoords, name) {
+    var xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<gpx version="1.1" creator="NearMe Route Finder" xmlns="http://www.topografix.com/GPX/1/1">\n';
+    xml += '<trk><name>' + name + '</name><trkseg>\n';
+    for (var i = 0; i < routeCoords.length; i++) {
+        xml += '<trkpt lat="' + routeCoords[i][0].toFixed(6) + '" lon="' + routeCoords[i][1].toFixed(6) + '"></trkpt>\n';
+    }
+    xml += '</trkseg></trk>\n</gpx>';
+    downloadFile(name.replace(/\s+/g, '_') + '.gpx', xml, 'application/gpx+xml');
+}
+
+function toCSV(routeCoords, stats, name) {
+    var csv = 'latitude,longitude,severity,distance_km,clemency\n';
+    var dist = 0;
+    for (var i = 0; i < routeCoords.length; i++) {
+        if (i > 0) dist += haversine(routeCoords[i-1][0], routeCoords[i-1][1], routeCoords[i][0], routeCoords[i][1]);
+        csv += routeCoords[i][0].toFixed(6) + ',' + routeCoords[i][1].toFixed(6) + ',' +
+               (stats ? stats.avgSeverity.toFixed(3) : '') + ',' + dist.toFixed(2) + ',' +
+               (stats ? stats.rating : '') + '\n';
+    }
+    downloadFile(name.replace(/\s+/g, '_') + '.csv', csv, 'text/csv');
+}
+
 function displayRoute(safeRoad, directRoad, safeStats, directStats) {
     if (routeLayer) map.removeLayer(routeLayer);
     if (altRouteLayer) map.removeLayer(altRouteLayer);
@@ -307,6 +352,23 @@ function displayRoute(safeRoad, directRoad, safeStats, directStats) {
             '<div class="result-stat"><span>Severity avoided:</span> <b>' + sevDiff + '</b></div>' +
             '</div>';
     }
+
+    // Store routes globally for export button onclick handlers
+    window._safeRoad = safeRoad;
+    window._directRoad = directRoad;
+    window._safeStats = safeStats;
+
+    // Export section
+    html += '<div class="export-section">' +
+        '<h3>Export Directions</h3>' +
+        '<div class="export-btns">' +
+        '<a class="export-btn gmaps" href="' + toGoogleMapsUrl(safeRoad) + '" target="_blank">Google Maps (safest)</a>' +
+        (directRoad ? '<a class="export-btn gmaps" href="' + toGoogleMapsUrl(directRoad) + '" target="_blank">Google Maps (direct)</a>' : '') +
+        '<button class="export-btn" onclick="toGPX(window._safeRoad, \'Safest Route\')">GPX (safest)</button>' +
+        (directRoad ? '<button class="export-btn" onclick="toGPX(window._directRoad, \'Direct Route\')">GPX (direct)</button>' : '') +
+        '<button class="export-btn" onclick="toCSV(window._safeRoad, window._safeStats, \'Safest Route\')">CSV (safest)</button>' +
+        '</div>' +
+        '</div>';
 
     document.getElementById('results').innerHTML = html;
 }

@@ -47,6 +47,21 @@ button {
 .legend { margin-top: 20px; padding-top: 14px; border-top: 1px solid #333; }
 .legend h3 { font-size: 0.9em; color: #aaa; margin-bottom: 8px; }
 .legend-item { font-size: 0.8em; margin: 4px 0; display: flex; align-items: center; }
+.export-section {
+    margin-top: 12px; padding: 10px;
+    background: rgba(52, 152, 219, 0.08); border-radius: 8px;
+}
+.export-section h3 { font-size: 14px; margin: 0 0 8px 0; color: #3498db; }
+.export-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.export-btn {
+    display: inline-block; padding: 6px 12px; font-size: 12px;
+    color: #fff; background: #3498db; border: none; border-radius: 4px;
+    cursor: pointer; text-decoration: none; text-align: center;
+}
+.export-btn:hover { background: #2980b9; }
+.export-btn.gmaps { background: #e67e22; }
+.export-btn.gmaps:hover { background: #d35400; }
+
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
 .line { width: 24px; height: 4px; display: inline-block; margin-right: 8px; border-radius: 2px; }
 .line.safe { background: #3498db; }
