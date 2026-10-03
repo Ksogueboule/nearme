@@ -65,7 +65,7 @@ async function sendChatMessage() {
         if (t) t.remove();
         var answer = data.answer || ('Error: ' + (data.error || 'Unknown'));
         // Parse action directive from agent response
-        var actionMatch = answer.match(/\[ACTION:\s*(\{[^}]+\})\s*\]/i););
+        var actionMatch = answer.match(/\[ACTION:\s*(\{[^}]+\})\s*\]/i);
         if (actionMatch) {
             try {
                 var action = JSON.parse(actionMatch[1]);
@@ -454,7 +454,7 @@ async function findRoute() {
     displayRoute(safeRoad, directRoad, safeStats, directStats);
 }
 
-// Export utilities — Google Maps link, GPX, CSV
+// Export utilities — Google Maps, Apple Maps links, GPX, CSV
 function toGoogleMapsUrl(routeCoords) {
     var maxWps = 10;
     var step = Math.max(1, Math.floor(routeCoords.length / maxWps));
@@ -465,6 +465,13 @@ function toGoogleMapsUrl(routeCoords) {
     var lastPt = last[0].toFixed(5) + ',' + last[1].toFixed(5);
     if (pts[pts.length - 1] !== lastPt) pts.push(lastPt);
     return 'https://www.google.com/maps/dir/' + pts.join('/');
+}
+
+function toAppleMapsUrl(routeCoords) {
+    var start = routeCoords[0];
+    var end = routeCoords[routeCoords.length - 1];
+    return 'https://maps.apple.com/?saddr=' + start[0].toFixed(5) + ',' + start[1].toFixed(5) +
+        '&daddr=' + end[0].toFixed(5) + ',' + end[1].toFixed(5) + '&dirflg=d';
 }
 
 function downloadFile(filename, content, mimeType) {
@@ -583,7 +590,9 @@ function displayRoute(safeRoad, directRoad, safeStats, directStats) {
         '<h3>Export Directions</h3>' +
         '<div class="export-btns">' +
         '<a class="export-btn gmaps" href="' + toGoogleMapsUrl(safeRoad) + '" target="_blank">Google Maps (safest)</a>' +
+        '<a class="export-btn apple" href="' + toAppleMapsUrl(safeRoad) + '" target="_blank">Apple Maps (safest)</a>' +
         (directRoad ? '<a class="export-btn gmaps" href="' + toGoogleMapsUrl(directRoad) + '" target="_blank">Google Maps (direct)</a>' : '') +
+        (directRoad ? '<a class="export-btn apple" href="' + toAppleMapsUrl(directRoad) + '" target="_blank">Apple Maps (direct)</a>' : '') +
         '<button class="export-btn" onclick="toGPX(window._safeRoad, \'Safest Route\')">GPX (safest)</button>' +
         (directRoad ? '<button class="export-btn" onclick="toGPX(window._directRoad, \'Direct Route\')">GPX (direct)</button>' : '') +
         '<button class="export-btn" onclick="toCSV(window._safeRoad, window._safeStats, \'Safest Route\')">CSV (safest)</button>' +

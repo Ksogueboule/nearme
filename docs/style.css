@@ -61,6 +61,8 @@ button {
 .export-btn:hover { background: #2980b9; }
 .export-btn.gmaps { background: #e67e22; }
 .export-btn.gmaps:hover { background: #d35400; }
+.export-btn.apple { background: #555; }
+.export-btn.apple:hover { background: #333; }
 
 .data-status {
     font-size: 11px; color: #888; margin: 4px 0 10px; display: flex; align-items: center; gap: 6px;
