@@ -5,6 +5,7 @@ let map = null;
 let clemencyData = [];
 let startMarker = null, endMarker = null;
 let routeLayer = null, altRouteLayer = null, severityLayer = null, hazardLayer = null;
+let allDataLayer = null, allDataVisible = false;
 let startCoords = null, endCoords = null;
 
 const CLEMENCY_COLORS = {
@@ -70,7 +71,7 @@ async function sendChatMessage() {
 }
 
 function initMap() {
-    map = L.map('map').setView([35.5, -79.2], 7);
+    map = L.map('map', { preferCanvas: true }).setView([35.5, -79.2], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '\u00a9 OpenStreetMap', maxZoom: 18
     }).addTo(map);
@@ -85,6 +86,37 @@ function initMap() {
             setStart(e.latlng.lat, e.latlng.lng);
         }
     });
+}
+
+// Toggle all data points overlay
+function toggleAllData() {
+    if (!allDataLayer) {
+        allDataLayer = L.layerGroup();
+        for (var i = 0; i < clemencyData.length; i++) {
+            var pt = clemencyData[i];
+            var c = sevColor(pt[2]);
+            L.circleMarker([pt[0], pt[1]], {
+                radius: 3, color: c, fillColor: c, fillOpacity: 0.5, weight: 1
+            }).bindPopup(
+                '<b>' + pt[4] + '</b><br>Severity: ' + pt[2].toFixed(2) + ' (' + pt[5] + ')<br>' + (pt[6] || '')
+            ).addTo(allDataLayer);
+        }
+    }
+    if (allDataVisible) {
+        allDataLayer.remove();
+        allDataVisible = false;
+        var btn = document.getElementById('toggle-data-btn');
+        btn.textContent = 'Show All Data Points';
+        btn.classList.remove('active');
+        document.getElementById('data-count').textContent = '';
+    } else {
+        allDataLayer.addTo(map);
+        allDataVisible = true;
+        var btn = document.getElementById('toggle-data-btn');
+        btn.textContent = 'Hide All Data Points';
+        btn.classList.add('active');
+        document.getElementById('data-count').textContent = clemencyData.length + ' data points visible';
+    }
 }
 
 function setStart(lat, lon) {
@@ -603,6 +635,12 @@ async function refreshData() {
             if (startCoords && endCoords && routeLayer) {
                 console.log('Recomputing route with refreshed data...');
                 findRoute();
+            }
+            // Rebuild all-data overlay if visible
+            if (allDataVisible) {
+                if (allDataLayer) { allDataLayer.remove(); allDataLayer = null; }
+                allDataVisible = false;
+                toggleAllData();
             }
         } else {
             console.log('Data refreshed: no changes detected');
