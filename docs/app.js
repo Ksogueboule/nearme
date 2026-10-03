@@ -572,7 +572,64 @@ async function loadData() {
     console.log('Generated ' + clemencyData.length + ' fallback data points');
 }
 
+// Auto-refresh polling
+var REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+var refreshTimer = null;
+var lastRefreshTime = null;
+var lastDataHash = '';
+
+function dataHash(data) {
+    var h = data.length + ':';
+    for (var i = 0; i < Math.min(10, data.length); i++)
+        h += data[i][0] + ',' + data[i][1] + ',' + data[i][2] + ';';
+    var tail = data.length - 1;
+    if (tail >= 0) h += data[tail][0] + ',' + data[tail][1] + ',' + data[tail][2];
+    return h;
+}
+
+async function refreshData() {
+    try {
+        var resp = await fetch(API_BASE + '/api/clemency');
+        if (!resp.ok) return;
+        var newData = await resp.json();
+        if (!Array.isArray(newData) || newData.length === 0) return;
+
+        var newHash = dataHash(newData);
+        if (newHash !== lastDataHash) {
+            clemencyData = newData;
+            lastDataHash = newHash;
+            console.log('Data refreshed: ' + newData.length + ' entries (changed)');
+            // Recompute route if one is active
+            if (startCoords && endCoords && routeLayer) {
+                console.log('Recomputing route with refreshed data...');
+                findRoute();
+            }
+        } else {
+            console.log('Data refreshed: no changes detected');
+        }
+        lastRefreshTime = new Date();
+        updateRefreshIndicator();
+    } catch (e) { console.log('Refresh failed:', e); }
+}
+
+function updateRefreshIndicator() {
+    var el = document.getElementById('data-status');
+    if (!el || !lastRefreshTime) return;
+    var secs = Math.floor((new Date() - lastRefreshTime) / 1000);
+    var txt = secs < 60 ? secs + 's ago' : Math.floor(secs / 60) + 'm ago';
+    el.innerHTML = '<span class="status-dot live"></span> Live \u00b7 Updated ' + txt;
+}
+
+function startAutoRefresh() {
+    setInterval(refreshData, REFRESH_INTERVAL);
+    setInterval(updateRefreshIndicator, 10000);
+}
+
 window.addEventListener('load', async function() {
     initMap();
     await loadData();
+    lastRefreshTime = new Date();
+    lastDataHash = dataHash(clemencyData);
+    updateRefreshIndicator();
+    startAutoRefresh();
 });

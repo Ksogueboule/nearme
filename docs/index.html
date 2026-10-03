@@ -11,6 +11,7 @@
     <div id="sidebar">
         <h1>\ud83d\ude98 NearMe Route Finder</h1>
         <p class="subtitle">Find the least severe driving route across North Carolina</p>
+        <div id="data-status" class="data-status">Loading data...</div>
 
         <div class="input-group">
             <label for="start-input">\ud83d\udfe0 Start Location</label>
@@ -26,6 +27,7 @@
 
         <button id="find-route-btn" onclick="findRoute()">Find Safest Route</button>
         <button id="clear-btn" onclick="clearRoute()">Clear</button>
+        <button id="refresh-btn" class="refresh-btn" onclick="refreshData()">\u21bb Refresh</button>
 
         <div id="results" class="results-panel"></div>
 
