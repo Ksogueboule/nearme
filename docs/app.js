@@ -49,13 +49,35 @@ function setEnd(lat, lon) {
 }
 
 async function geocode(location) {
-    var coords = location.match(/(-?\d+\.?\d*)[\s,]+(-?\d+\.?\d*)/);
-    if (coords) return { lat: parseFloat(coords[1]), lon: parseFloat(coords[2]) };
+    location = location.trim();
+    if (!location) return null;
+
+    // Try to parse as coordinates: "35.78, -78.64", "35.78 -78.64", "(35.78,-78.64)"
+    var coords = location.match(/\(?\s*(-?\d+\.?\d*)\s*[, ]+\s*(-?\d+\.?\d*)\s*\)?/);
+    if (coords) {
+        var lat = parseFloat(coords[1]), lon = parseFloat(coords[2]);
+        if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180)
+            return { lat: lat, lon: lon };
+    }
+
+    // Try ZIP code (5-digit)
+    var zip = location.match(/^\d{5}$/);
+    if (zip) location = zip[0] + ', NC';
+
+    // Geocode via Nominatim — add NC context only if not already present
+    var q = location;
+    if (!/\b(NC|North Carolina|SC|South Carolina|VA|Virginia|GA|Tennessee|TN|USA)\b/i.test(q))
+        q += ', North Carolina';
+
     try {
         var resp = await fetch('https://nominatim.openstreetmap.org/search?q=' +
-            encodeURIComponent(location + ', North Carolina') + '&format=json&limit=1');
+            encodeURIComponent(q) + '&format=json&limit=1&addressdetails=1');
         var data = await resp.json();
-        if (data && data[0]) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+        if (data && data[0]) {
+            var r = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+            console.log('Geocoded "' + location + '" to ' + r.lat.toFixed(4) + ', ' + r.lon.toFixed(4));
+            return r;
+        }
     } catch (e) { console.error('Geocoding failed:', e); }
     return null;
 }
@@ -191,11 +213,19 @@ function analyzeRoute(routeCoords) {
 async function findRoute() {
     if (!startCoords) {
         var si = document.getElementById('start-input').value.trim();
-        if (si) { startCoords = await geocode(si); if (startCoords) setStart(startCoords.lat, startCoords.lon); }
+        if (si) {
+            startCoords = await geocode(si);
+            if (!startCoords) { document.getElementById('results').innerHTML = '<p class="error">Could not find "' + si + '". Try a street address, city, ZIP code, landmark, or coordinates.</p>'; return; }
+            setStart(startCoords.lat, startCoords.lon);
+        }
     }
     if (!endCoords) {
         var ei = document.getElementById('end-input').value.trim();
-        if (ei) { endCoords = await geocode(ei); if (endCoords) setEnd(endCoords.lat, endCoords.lon); }
+        if (ei) {
+            endCoords = await geocode(ei);
+            if (!endCoords) { document.getElementById('results').innerHTML = '<p class="error">Could not find "' + ei + '". Try a street address, city, ZIP code, landmark, or coordinates.</p>'; return; }
+            setEnd(endCoords.lat, endCoords.lon);
+        }
     }
     if (!startCoords || !endCoords) { alert('Please set both start and end locations.'); return; }
 
