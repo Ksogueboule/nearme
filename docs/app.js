@@ -752,18 +752,42 @@ function dataHash(data) {
     return h;
 }
 
-async function refreshData() {
+async function refreshData(force) {
+    var btn = document.getElementById('refresh-btn');
+    if (btn) { btn.textContent = '\u21bb Refreshing...'; btn.disabled = true; }
     try {
-        var resp = await fetch(API_BASE + '/api/clemency');
-        if (!resp.ok) return;
-        var newData = await resp.json();
-        if (!Array.isArray(newData) || newData.length === 0) return;
+        var newData = null;
+        // Try live API first
+        try {
+            var resp = await fetch(API_BASE + '/api/clemency');
+            if (resp.ok) {
+                newData = await resp.json();
+                if (!Array.isArray(newData) || newData.length === 0) newData = null;
+            }
+        } catch (e) { console.log('Live API failed during refresh:', e); }
+
+        // Fall back to static JSON file if API unavailable
+        if (!newData) {
+            try {
+                var resp2 = await fetch('clemency_data.json');
+                if (resp2.ok) {
+                    newData = await resp2.json();
+                    if (!Array.isArray(newData) || newData.length === 0) newData = null;
+                }
+            } catch (e) { console.log('Static file failed during refresh:', e); }
+        }
+
+        if (!newData) {
+            console.log('Refresh failed: no data source available');
+            if (btn) { btn.textContent = '\u21bb Refresh'; btn.disabled = false; }
+            return;
+        }
 
         var newHash = dataHash(newData);
-        if (newHash !== lastDataHash) {
+        if (force || newHash !== lastDataHash) {
             clemencyData = newData;
             lastDataHash = newHash;
-            console.log('Data refreshed: ' + newData.length + ' entries (changed)');
+            console.log('Data refreshed: ' + newData.length + ' entries' + (force ? ' (forced)' : ' (changed)'));
             // Recompute route if one is active
             if (startCoords && endCoords && routeLayer) {
                 console.log('Recomputing route with refreshed data...');
@@ -787,6 +811,7 @@ async function refreshData() {
         lastRefreshTime = new Date();
         updateRefreshIndicator();
     } catch (e) { console.log('Refresh failed:', e); }
+    if (btn) { btn.textContent = '\u21bb Refresh'; btn.disabled = false; }
 }
 
 function updateRefreshIndicator() {
