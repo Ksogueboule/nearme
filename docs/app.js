@@ -12,6 +12,63 @@ const CLEMENCY_COLORS = {
     Severe: '#e74c3c', Extreme: '#8e44ad'
 };
 
+// API base URL — same-origin on Databricks app, cross-origin from GitHub Pages
+var API_BASE = window.location.hostname.includes('databricksapps.com')
+    ? ''
+    : 'https://nearme-route-finder-7474645519488303.aws.databricksapps.com';
+
+// --- Chat widget ---
+function toggleChat() {
+    document.getElementById('chat-panel').classList.toggle('open');
+}
+
+function addChatMessage(role, text) {
+    var msgs = document.getElementById('chat-messages');
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + role;
+    div.textContent = text;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function sendChatMessage() {
+    var input = document.getElementById('chat-input');
+    var question = input.value.trim();
+    if (!question) return;
+    addChatMessage('user', question);
+    input.value = '';
+
+    var msgs = document.getElementById('chat-messages');
+    var typing = document.createElement('div');
+    typing.className = 'chat-msg bot';
+    typing.id = 'chat-typing';
+    typing.textContent = 'Thinking...';
+    msgs.appendChild(typing);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    var context = {};
+    if (startCoords) context.start = startCoords.lat.toFixed(4) + ', ' + startCoords.lon.toFixed(4);
+    if (endCoords) context.end = endCoords.lat.toFixed(4) + ', ' + endCoords.lon.toFixed(4);
+    if (window._safeStats) context.safeStats = { distance: window._safeStats.distance, avgSeverity: window._safeStats.avgSeverity, rating: window._safeStats.rating };
+    if (window._directStats) context.directStats = { distance: window._directStats.distance, avgSeverity: window._directStats.avgSeverity, rating: window._directStats.rating };
+
+    try {
+        var resp = await fetch(API_BASE + '/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: question, context: context })
+        });
+        var data = await resp.json();
+        var t = document.getElementById('chat-typing');
+        if (t) t.remove();
+        addChatMessage('bot', data.answer || ('Error: ' + (data.error || 'Unknown')));
+    } catch (e) {
+        var t = document.getElementById('chat-typing');
+        if (t) t.remove();
+        addChatMessage('bot', 'Sorry, I could not connect to the AI agent. The Databricks app may be stopped.');
+    }
+}
+
 function initMap() {
     map = L.map('map').setView([35.5, -79.2], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -485,9 +542,7 @@ function generateFallbackData() {
 
 async function loadData() {
     // Try live API endpoint (Databricks app backend) first
-    var API_URL = window.location.hostname.includes('databricksapps.com')
-        ? '/api/clemency'
-        : 'https://nearme-route-finder-7474645519488303.aws.databricksapps.com/api/clemency';
+    var API_URL = API_BASE + '/api/clemency';
     try {
         var resp = await fetch(API_URL);
         if (resp.ok) {

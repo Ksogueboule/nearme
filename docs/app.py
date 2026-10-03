@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, send_from_directory, jsonify, request
 import os, time
 
 app = Flask(__name__, static_folder='.', static_url_path='')
@@ -79,6 +79,60 @@ def api_clemency():
         return jsonify(data)
     except Exception as e:
         print(f'API error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat', methods=['POST', 'OPTIONS'])
+def api_chat():
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        data = request.get_json(force=True)
+        question = data.get('question', '')
+        ctx = data.get('context', {})
+
+        system_prompt = (
+            "You are the NearMe AI assistant, an environmental hazard routing expert for North Carolina. "
+            "You help users understand route safety, hazard conditions, and environmental data.\n\n"
+            "NearMe analyzes 7 data sources across NC:\n"
+            "- EPA Air Quality (AQI)\n"
+            "- NOAA Weather (temperature, wind, humidity)\n"
+            "- USGS Water (gage heights)\n"
+            "- NCDOT Crashes (traffic incidents)\n"
+            "- NCGS Landslides (impact, damage, fatalities)\n"
+            "- NCEM Flood Zones (flood depth)\n"
+            "- IRWIN Wildland Fires (fire size, containment)\n\n"
+            "Routes are scored 0-1 severity and classified: Benign, Mild, Moderate, Severe, Extreme. "
+            "The app finds the safest route by minimizing total environmental severity via A* pathfinding.\n"
+            "Keep answers concise (2-3 sentences). Be helpful and specific."
+        )
+
+        if ctx:
+            system_prompt += "\n\nCurrent route context:\n"
+            if ctx.get('start'): system_prompt += f"Start: {ctx['start']}\n"
+            if ctx.get('end'): system_prompt += f"End: {ctx['end']}\n"
+            if ctx.get('safeStats'):
+                s = ctx['safeStats']
+                system_prompt += f"Safest route: {s.get('distance',0):.1f} km, avg severity {s.get('avgSeverity',0):.3f}, clemency: {s.get('rating','?')}\n"
+            if ctx.get('directStats'):
+                d = ctx['directStats']
+                system_prompt += f"Direct route: {d.get('distance',0):.1f} km, avg severity {d.get('avgSeverity',0):.3f}, clemency: {d.get('rating','?')}\n"
+            if ctx.get('hazards'):
+                system_prompt += f"Nearby hazards: {ctx['hazards']}\n"
+
+        from databricks.sdk import WorkspaceClient
+        from databricks.sdk.service.serving import ChatMessage, ChatMessageRole
+        w = WorkspaceClient()
+        response = w.serving_endpoints.query(
+            name="databricks-llama-4-maverick",
+            messages=[
+                ChatMessage(role=ChatMessageRole.SYSTEM, content=system_prompt),
+                ChatMessage(role=ChatMessageRole.USER, content=question),
+            ]
+        )
+        answer = response.choices[0].message.content
+        return jsonify({'answer': answer})
+    except Exception as e:
+        print(f'Chat API error: {e}')
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

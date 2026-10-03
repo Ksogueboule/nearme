@@ -49,6 +49,23 @@
 
     <div id="map"></div>
 
+    <div id="chat-widget">
+        <div id="chat-toggle" onclick="toggleChat()">🤖</div>
+        <div id="chat-panel">
+            <div id="chat-header">
+                <span>🤖 NearMe AI Agent</span>
+                <button onclick="toggleChat()">✕</button>
+            </div>
+            <div id="chat-messages">
+                <div class="chat-msg bot">👋 Hi! I'm the NearMe AI agent. Ask me about your route, nearby hazards, or environmental conditions in North Carolina.</div>
+            </div>
+            <div id="chat-input-group">
+                <input type="text" id="chat-input" placeholder="Ask about your route..." onkeydown="if(event.key==='Enter')sendChatMessage()" />
+                <button id="chat-send" onclick="sendChatMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
