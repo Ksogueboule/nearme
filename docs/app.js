@@ -6,6 +6,7 @@ let clemencyData = [];
 let startMarker = null, endMarker = null;
 let routeLayer = null, altRouteLayer = null, severityLayer = null, hazardLayer = null;
 let allDataLayer = null, allDataVisible = false;
+let heatmapLayer = null, heatmapVisible = false;
 let startCoords = null, endCoords = null;
 
 const CLEMENCY_COLORS = {
@@ -116,6 +117,30 @@ function toggleAllData() {
         btn.textContent = 'Hide All Data Points';
         btn.classList.add('active');
         document.getElementById('data-count').textContent = clemencyData.length + ' data points visible';
+    }
+}
+
+// Toggle heatmap visualization
+function toggleHeatmap() {
+    if (!heatmapLayer) {
+        var heatPoints = clemencyData.map(function(pt) { return [pt[0], pt[1], pt[2]]; });
+        heatmapLayer = L.heatLayer(heatPoints, {
+            radius: 25, blur: 20, maxZoom: 12, max: 0.6,
+            gradient: { 0.0: '#2ecc71', 0.15: '#f1c40f', 0.25: '#e67e22', 0.4: '#e74c3c', 0.55: '#8e44ad', 1.0: '#8e44ad' }
+        });
+    }
+    if (heatmapVisible) {
+        map.removeLayer(heatmapLayer);
+        heatmapVisible = false;
+        var btn = document.getElementById('toggle-heatmap-btn');
+        btn.textContent = 'Show Heatmap';
+        btn.classList.remove('active');
+    } else {
+        heatmapLayer.addTo(map);
+        heatmapVisible = true;
+        var btn = document.getElementById('toggle-heatmap-btn');
+        btn.textContent = 'Hide Heatmap';
+        btn.classList.add('active');
     }
 }
 
@@ -641,6 +666,12 @@ async function refreshData() {
                 if (allDataLayer) { allDataLayer.remove(); allDataLayer = null; }
                 allDataVisible = false;
                 toggleAllData();
+            }
+            // Rebuild heatmap if visible
+            if (heatmapVisible) {
+                if (heatmapLayer) { map.removeLayer(heatmapLayer); heatmapLayer = null; }
+                heatmapVisible = false;
+                toggleHeatmap();
             }
         } else {
             console.log('Data refreshed: no changes detected');
