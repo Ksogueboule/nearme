@@ -53,7 +53,7 @@ def api_clemency():
                       "FROM workspace.default.clemency_labeled "
                       "WHERE latitude IS NOT NULL AND longitude IS NOT NULL",
             wait_timeout="300s",
-            byte_limit=100_000_000,
+            byte_limit=26_214_400,
         )
 
         if result.status.state != 'SUCCEEDED':
@@ -104,14 +104,17 @@ def api_chat():
             "Routes are scored 0-1 severity and classified: Benign, Mild, Moderate, Severe, Extreme. "
             "The app finds the safest route by minimizing total environmental severity via A* pathfinding.\n"
             "Keep answers concise (2-3 sentences). Be helpful and specific.\n\n"
-            "ACTION PROTOCOL: If the user asks to find a route, plan a trip, or set start/end locations, "
-            "append an action directive at the END of your response in this exact format:\n"
-            '[ACTION:{"type":"find_route","start":"City, NC","end":"City, NC"}]\n'
-            "For setting only start or end:\n"
-            '[ACTION:{"type":"set_start","location":"City, NC"}]\n'
-            '[ACTION:{"type":"set_end","location":"City, NC"}]\n'
-            "Only include the action block when the user explicitly requests a route or location. "
-            "Do not include it for informational questions. Use full place names (e.g. 'Raleigh, NC')."
+            "ACTION PROTOCOL: When the user asks to find a route, plan a trip, or set locations, you MUST "
+            "append an action directive on its own line at the very end of your response.\n"
+            "Example: User says 'Find a route from Raleigh to Asheville'.\n"
+            "Your response: I'll find the safest route from Raleigh to Asheville.\n"
+            '[ACTION:{"type":"find_route","start":"Raleigh, NC","end":"Asheville, NC"}]\n'
+            "Formats (use exactly one):\n"
+            '  [ACTION:{"type":"find_route","start":"City, NC","end":"City, NC"}]\n'
+            '  [ACTION:{"type":"set_start","location":"City, NC"}]\n'
+            '  [ACTION:{"type":"set_end","location":"City, NC"}]\n'
+            "The action line MUST be the last line, using this exact JSON format. Use full place names. "
+            "Only include the action when the user requests a route or location, not for informational questions."
         )
 
         if ctx:
@@ -138,6 +141,16 @@ def api_chat():
             ]
         )
         answer = response.choices[0].message.content
+
+        # Fallback: if LLM didn't include action, extract locations from question
+        import re as _re
+        if '[ACTION:' not in answer.upper():
+            q_lower = question.lower()
+            if any(kw in q_lower for kw in ['route', 'drive', 'directions', 'plan a trip', 'navigate']):
+                m = _re.search(r'from\s+(.+?)\s+to\s+(.+?)(?:[\.,\?!]|$)', question, _re.I)
+                if m:
+                    answer += '\n' + '[ACTION:{"type":"find_route","start":"' + m.group(1).strip() + '","end":"' + m.group(2).strip() + '"}]'
+
         return jsonify({'answer': answer})
     except Exception as e:
         print(f'Chat API error: {e}')

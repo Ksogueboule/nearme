@@ -63,11 +63,45 @@ async function sendChatMessage() {
         var data = await resp.json();
         var t = document.getElementById('chat-typing');
         if (t) t.remove();
-        addChatMessage('bot', data.answer || ('Error: ' + (data.error || 'Unknown')));
+        var answer = data.answer || ('Error: ' + (data.error || 'Unknown'));
+        // Parse action directive from agent response
+        var actionMatch = answer.match(/\[ACTION:\s*(\{[^}]+\})\s*\]/i););
+        if (actionMatch) {
+            try {
+                var action = JSON.parse(actionMatch[1]);
+                answer = answer.replace(actionMatch[0], '').trim();
+                addChatMessage('bot', answer);
+                addChatMessage('bot', 'Setting up your route...');
+                executeChatAction(action);
+            } catch (e) { addChatMessage('bot', answer); }
+        } else {
+            addChatMessage('bot', answer);
+        }
     } catch (e) {
         var t = document.getElementById('chat-typing');
         if (t) t.remove();
         addChatMessage('bot', 'Sorry, I could not connect to the AI agent. The Databricks app may be stopped.');
+    }
+}
+
+// Execute route actions from the AI agent
+async function executeChatAction(action) {
+    if (action.type === 'find_route') {
+        if (action.start) {
+            var sc = await geocode(action.start);
+            if (sc) setStart(sc.lat, sc.lon);
+        }
+        if (action.end) {
+            var ec = await geocode(action.end);
+            if (ec) setEnd(ec.lat, ec.lon);
+        }
+        if (startCoords && endCoords) await findRoute();
+    } else if (action.type === 'set_start' && action.location) {
+        var sc = await geocode(action.location);
+        if (sc) { setStart(sc.lat, sc.lon); addChatMessage('bot', 'Start set to ' + action.location); }
+    } else if (action.type === 'set_end' && action.location) {
+        var ec = await geocode(action.location);
+        if (ec) { setEnd(ec.lat, ec.lon); addChatMessage('bot', 'End set to ' + action.location); }
     }
 }
 
