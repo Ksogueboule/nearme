@@ -48,6 +48,9 @@ button {
 .legend h3 { font-size: 0.9em; color: #aaa; margin-bottom: 8px; }
 .legend-item { font-size: 0.8em; margin: 4px 0; display: flex; align-items: center; }
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+.line { width: 24px; height: 4px; display: inline-block; margin-right: 8px; border-radius: 2px; }
+.line.safe { background: #3498db; }
+.line.direct { background: #e74c3c; border-top: 2px dashed #e74c3c; height: 0; border-bottom: none; border-left: none; border-right: none; }
 .dot.benign { background: #2ecc71; }
 .dot.mild { background: #f1c40f; }
 .dot.moderate { background: #e67e22; }

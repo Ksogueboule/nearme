@@ -30,7 +30,10 @@
         <div id="results" class="results-panel"></div>
 
         <div class="legend">
-            <h3>Clemency Legend</h3>
+            <h3>Route Legend</h3>
+            <div class="legend-item"><span class="line safe"></span> Safest route (low severity)</div>
+            <div class="legend-item"><span class="line direct"></span> Direct route (shorter, worse)</div>
+            <h3 style="margin-top:10px">Clemency Legend</h3>
             <div class="legend-item"><span class="dot benign"></span> Benign (mild conditions)</div>
             <div class="legend-item"><span class="dot mild"></span> Mild</div>
             <div class="legend-item"><span class="dot moderate"></span> Moderate</div>
@@ -40,7 +43,7 @@
 
         <div class="instructions">
             <p><b>Tip:</b> Click on the map to set start/end points, or type a city name or coordinates above.</p>
-            <p>The A* algorithm finds the path with the lowest total environmental severity \u2014 avoiding floods, landslides, crashes, and fire zones.</p>
+            <p>The A* algorithm finds the path with the lowest total environmental severity, snapped to actual roads via OSRM. A direct (worse) alternative is shown in red for comparison.</p>
         </div>
     </div>
 

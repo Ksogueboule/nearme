@@ -4,7 +4,7 @@
 let map = null;
 let clemencyData = [];
 let startMarker = null, endMarker = null;
-let routeLayer = null, severityLayer = null, hazardLayer = null;
+let routeLayer = null, altRouteLayer = null, severityLayer = null, hazardLayer = null;
 let startCoords = null, endCoords = null;
 
 const CLEMENCY_COLORS = {
@@ -99,7 +99,8 @@ function buildSeverityGrid(data, minLat, maxLat, minLon, maxLon) {
 
 // A* pathfinding with 8-directional movement
 // Cost = move_distance + cell_severity * 10 (strongly prefer low-severity areas)
-function aStar(gd, sr, sc, er, ec) {
+function aStar(gd, sr, sc, er, ec, sevWeight) {
+    sevWeight = sevWeight !== undefined ? sevWeight : 10;
     var dirs = [[-1,0,1],[1,0,1],[0,-1,1],[0,1,1],[-1,-1,1.414],[-1,1,1.414],[1,-1,1.414],[1,1,1.414]];
     var open = [{ row: sr, col: sc, f: Math.sqrt((sr-er)**2 + (sc-ec)**2) }];
     var came = {}, gScore = {};
@@ -122,7 +123,7 @@ function aStar(gd, sr, sc, er, ec) {
             var nr = cur.row + dirs[d][0], nc = cur.col + dirs[d][1], dist = dirs[d][2];
             if (nr < 0 || nr >= gd.rows || nc < 0 || nc >= gd.cols) continue;
             var sev = gd.grid[nr][nc];
-            var cost = dist + sev * 10;
+            var cost = dist + sev * sevWeight;
             var tg = curG + cost;
             var nk = nr + ',' + nc;
             if (gScore[nk] === undefined || tg < gScore[nk]) {
@@ -133,6 +134,58 @@ function aStar(gd, sr, sc, er, ec) {
         }
     }
     return null;
+}
+
+// Snap A* waypoints to actual roads via OSRM public API
+async function snapToRoads(coords) {
+    var step = Math.max(1, Math.floor(coords.length / 20));
+    var wps = [];
+    for (var i = 0; i < coords.length; i += step)
+        wps.push(coords[i][1].toFixed(6) + ',' + coords[i][0].toFixed(6));
+    var last = coords[coords.length - 1];
+    var lastWp = last[1].toFixed(6) + ',' + last[0].toFixed(6);
+    if (wps[wps.length - 1] !== lastWp) wps.push(lastWp);
+    var url = 'https://router.project-osrm.org/route/v1/driving/' + wps.join(';') + '?overview=full&geometries=geojson';
+    try {
+        var resp = await fetch(url);
+        var data = await resp.json();
+        if (data.code === 'Ok' && data.routes && data.routes[0]) {
+            var geom = data.routes[0].geometry;
+            if (geom.type === 'LineString')
+                return geom.coordinates.map(function(c) { return [c[1], c[0]]; });
+        }
+    } catch (e) { console.error('OSRM routing failed:', e); }
+    return coords;
+}
+
+// Analyze severity along a route
+function analyzeRoute(routeCoords) {
+    var totalSev = 0, maxSev = 0, sp = [];
+    for (var i = 0; i < routeCoords.length; i++) {
+        var lat = routeCoords[i][0], lon = routeCoords[i][1];
+        var cellSev = 0, hazards = [];
+        for (var j = 0; j < clemencyData.length; j++) {
+            var pt = clemencyData[j];
+            var dLat = pt[0] - lat, dLon = pt[1] - lon;
+            if (Math.sqrt(dLat * dLat + dLon * dLon) < 0.02) {
+                cellSev = Math.max(cellSev, pt[2]);
+                if (hazards.length < 3) hazards.push(pt);
+            }
+        }
+        totalSev += cellSev;
+        if (cellSev > maxSev) maxSev = cellSev;
+        if (cellSev > 0.1) sp.push({ lat: lat, lon: lon, severity: cellSev, hazards: hazards });
+    }
+    var avgSev = totalSev / routeCoords.length;
+    var dist = 0;
+    for (var i = 1; i < routeCoords.length; i++)
+        dist += haversine(routeCoords[i - 1][0], routeCoords[i - 1][1], routeCoords[i][0], routeCoords[i][1]);
+    var rating = 'Benign';
+    if (avgSev > 0.5) rating = 'Extreme';
+    else if (avgSev > 0.4) rating = 'Severe';
+    else if (avgSev > 0.25) rating = 'Moderate';
+    else if (avgSev > 0.1) rating = 'Mild';
+    return { avgSeverity: avgSev, maxSeverity: maxSev, distance: dist, rating: rating, severityPoints: sp };
 }
 
 async function findRoute() {
@@ -146,7 +199,7 @@ async function findRoute() {
     }
     if (!startCoords || !endCoords) { alert('Please set both start and end locations.'); return; }
 
-    document.getElementById('results').innerHTML = '<p style="color:#3498db">Computing optimal route...</p>';
+    document.getElementById('results').innerHTML = '<p style="color:#3498db">Computing safest and direct routes...</p>';
 
     var minLat = Math.min(startCoords.lat, endCoords.lat);
     var maxLat = Math.max(startCoords.lat, endCoords.lat);
@@ -161,48 +214,47 @@ async function findRoute() {
     sr = Math.max(0, Math.min(gd.rows - 1, sr)); sc = Math.max(0, Math.min(gd.cols - 1, sc));
     er = Math.max(0, Math.min(gd.rows - 1, er)); ec = Math.max(0, Math.min(gd.cols - 1, ec));
 
-    var path = aStar(gd, sr, sc, er, ec);
-    if (!path) { document.getElementById('results').innerHTML = '<p class="error">No route found. Try different points.</p>'; return; }
+    // Compute safest route (high severity weight) and direct route (no severity weight)
+    var safePath = aStar(gd, sr, sc, er, ec, 10);
+    var directPath = aStar(gd, sr, sc, er, ec, 0);
+    if (!safePath) { document.getElementById('results').innerHTML = '<p class="error">No route found. Try different points.</p>'; return; }
 
-    var routeCoords = [];
-    for (var i = 0; i < path.length; i++)
-        routeCoords.push([gd.gridMinLat + path[i].row * gd.resLat, gd.gridMinLon + path[i].col * gd.resLon]);
+    // Convert grid paths to lat/lon
+    var safeCoords = safePath.map(function(p) { return [gd.gridMinLat + p.row * gd.resLat, gd.gridMinLon + p.col * gd.resLon]; });
+    var directCoords = directPath ? directPath.map(function(p) { return [gd.gridMinLat + p.row * gd.resLat, gd.gridMinLon + p.col * gd.resLon]; }) : null;
 
-    var totalSeverity = 0, maxSeverity = 0;
-    var severityPoints = [];
-    for (var i = 0; i < routeCoords.length; i++) {
-        var lat = routeCoords[i][0], lon = routeCoords[i][1];
-        var cellSev = 0, hazards = [];
-        for (var j = 0; j < clemencyData.length; j++) {
-            var pt = clemencyData[j];
-            var dLat = pt[0] - lat, dLon = pt[1] - lon;
-            var dist = Math.sqrt(dLat * dLat + dLon * dLon);
-            if (dist < 0.02) { cellSev = Math.max(cellSev, pt[2]); if (hazards.length < 3) hazards.push(pt); }
-        }
-        totalSeverity += cellSev;
-        if (cellSev > maxSeverity) maxSeverity = cellSev;
-        if (cellSev > 0.1) severityPoints.push({ lat: lat, lon: lon, severity: cellSev, hazards: hazards });
-    }
+    // Snap both routes to actual roads via OSRM
+    var safeRoad = await snapToRoads(safeCoords);
+    var directRoad = directCoords ? await snapToRoads(directCoords) : null;
 
-    var avgSeverity = totalSeverity / routeCoords.length;
-    var distance = haversine(startCoords.lat, startCoords.lon, endCoords.lat, endCoords.lon);
-    var rating = 'Benign';
-    if (avgSeverity > 0.5) rating = 'Extreme';
-    else if (avgSeverity > 0.4) rating = 'Severe';
-    else if (avgSeverity > 0.25) rating = 'Moderate';
-    else if (avgSeverity > 0.1) rating = 'Mild';
+    // Analyze severity along both routes
+    var safeStats = analyzeRoute(safeRoad);
+    var directStats = directRoad ? analyzeRoute(directRoad) : null;
 
-    displayRoute(routeCoords, severityPoints, avgSeverity, distance, rating, maxSeverity);
+    displayRoute(safeRoad, directRoad, safeStats, directStats);
 }
 
-function displayRoute(routeCoords, sp, avgSev, dist, rating, maxSev) {
+function displayRoute(safeRoad, directRoad, safeStats, directStats) {
     if (routeLayer) map.removeLayer(routeLayer);
+    if (altRouteLayer) map.removeLayer(altRouteLayer);
     if (severityLayer) map.removeLayer(severityLayer);
     if (hazardLayer) map.removeLayer(hazardLayer);
 
-    routeLayer = L.polyline(routeCoords, { color: '#3498db', weight: 4, opacity: 0.85 }).addTo(map);
-    map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+    // Safest route — blue solid line on roads
+    routeLayer = L.polyline(safeRoad, { color: '#3498db', weight: 5, opacity: 0.85 }).addTo(map);
 
+    // Direct (worse) route — red dashed line on roads
+    if (directRoad) {
+        altRouteLayer = L.polyline(directRoad, { color: '#e74c3c', weight: 3, opacity: 0.6, dashArray: '8,8' }).addTo(map);
+    }
+
+    // Fit bounds to show both routes
+    var bounds = routeLayer.getBounds();
+    if (altRouteLayer) bounds.extend(altRouteLayer.getBounds());
+    map.fitBounds(bounds, { padding: [50, 50] });
+
+    // Severity markers along safest route
+    var sp = safeStats.severityPoints;
     severityLayer = L.layerGroup();
     var step = Math.max(1, Math.floor(sp.length / 50));
     for (var i = 0; i < sp.length; i += step) {
@@ -211,6 +263,7 @@ function displayRoute(routeCoords, sp, avgSev, dist, rating, maxSev) {
     }
     severityLayer.addTo(map);
 
+    // Hazard markers
     hazardLayer = L.layerGroup();
     var shown = {};
     for (var i = 0; i < sp.length; i++) {
@@ -227,17 +280,35 @@ function displayRoute(routeCoords, sp, avgSev, dist, rating, maxSev) {
     }
     hazardLayer.addTo(map);
 
-    var hc = CLEMENCY_COLORS[rating] || '#888';
-    var hazardCount = Object.keys(shown).length;
-    document.getElementById('results').innerHTML =
-        '<div class="result-card" style="border-left-color:' + hc + '">' +
-        '<h3 style="color:' + hc + '">' + rating + ' Route</h3>' +
-        '<div class="result-stat"><span>Distance:</span> <b>' + dist.toFixed(1) + ' km</b></div>' +
-        '<div class="result-stat"><span>Avg Severity:</span> <b>' + avgSev.toFixed(3) + '</b></div>' +
-        '<div class="result-stat"><span>Max Severity:</span> <b>' + maxSev.toFixed(3) + '</b></div>' +
-        '<div class="result-stat"><span>Route Points:</span> <b>' + routeCoords.length + '</b></div>' +
-        '<div class="result-stat"><span>Hazards Near Route:</span> <b>' + hazardCount + '</b></div>' +
+    // Results panel — show both routes with comparison
+    var safeColor = CLEMENCY_COLORS[safeStats.rating] || '#888';
+    var html = '<div class="result-card" style="border-left-color:#3498db">' +
+        '<h3 style="color:#3498db">Safest Route (blue)</h3>' +
+        '<div class="result-stat"><span>Distance:</span> <b>' + safeStats.distance.toFixed(1) + ' km</b></div>' +
+        '<div class="result-stat"><span>Avg Severity:</span> <b>' + safeStats.avgSeverity.toFixed(3) + '</b></div>' +
+        '<div class="result-stat"><span>Max Severity:</span> <b>' + safeStats.maxSeverity.toFixed(3) + '</b></div>' +
+        '<div class="result-stat"><span>Clemency:</span> <b style="color:' + safeColor + '">' + safeStats.rating + '</b></div>' +
         '</div>';
+
+    if (directStats) {
+        var directColor = CLEMENCY_COLORS[directStats.rating] || '#888';
+        var sevDiff = (directStats.avgSeverity - safeStats.avgSeverity).toFixed(3);
+        var distDiff = (directStats.distance - safeStats.distance).toFixed(1);
+        html += '<div class="result-card" style="border-left-color:#e74c3c;margin-top:8px">' +
+            '<h3 style="color:#e74c3c">Direct Route (red dashed)</h3>' +
+            '<div class="result-stat"><span>Distance:</span> <b>' + directStats.distance.toFixed(1) + ' km</b></div>' +
+            '<div class="result-stat"><span>Avg Severity:</span> <b>' + directStats.avgSeverity.toFixed(3) + '</b></div>' +
+            '<div class="result-stat"><span>Max Severity:</span> <b>' + directStats.maxSeverity.toFixed(3) + '</b></div>' +
+            '<div class="result-stat"><span>Clemency:</span> <b style="color:' + directColor + '">' + directStats.rating + '</b></div>' +
+            '</div>' +
+            '<div class="result-card" style="border-left-color:#2ecc71;margin-top:8px">' +
+            '<h3 style="color:#2ecc71">Comparison</h3>' +
+            '<div class="result-stat"><span>Extra distance:</span> <b>+' + distDiff + ' km</b></div>' +
+            '<div class="result-stat"><span>Severity avoided:</span> <b>' + sevDiff + '</b></div>' +
+            '</div>';
+    }
+
+    document.getElementById('results').innerHTML = html;
 }
 
 function haversine(lat1, lon1, lat2, lon2) {
@@ -256,13 +327,14 @@ function sevColor(s) {
 
 function clearRoute() {
     if (routeLayer) map.removeLayer(routeLayer);
+    if (altRouteLayer) map.removeLayer(altRouteLayer);
     if (severityLayer) map.removeLayer(severityLayer);
     if (hazardLayer) map.removeLayer(hazardLayer);
     if (startMarker) map.removeLayer(startMarker);
     if (endMarker) map.removeLayer(endMarker);
     startCoords = null; endCoords = null;
     startMarker = null; endMarker = null;
-    routeLayer = null; severityLayer = null; hazardLayer = null;
+    routeLayer = null; altRouteLayer = null; severityLayer = null; hazardLayer = null;
     document.getElementById('start-coords').textContent = '';
     document.getElementById('end-coords').textContent = '';
     document.getElementById('results').innerHTML = '';
