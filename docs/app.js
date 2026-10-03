@@ -392,17 +392,37 @@ function generateFallbackData() {
 }
 
 async function loadData() {
+    // Try live API endpoint (Databricks app backend) first
+    var API_URL = window.location.hostname.includes('databricksapps.com')
+        ? '/api/clemency'
+        : 'https://nearme-route-finder-7474645519488303.aws.databricksapps.com/api/clemency';
+    try {
+        var resp = await fetch(API_URL);
+        if (resp.ok) {
+            clemencyData = await resp.json();
+            if (Array.isArray(clemencyData) && clemencyData.length > 0) {
+                console.log('Loaded ' + clemencyData.length + ' data points from live API');
+                return;
+            }
+        }
+    } catch (e) { console.log('Live API not available, trying local file...'); }
+
+    // Fall back to static JSON file
     try {
         var resp = await fetch('clemency_data.json');
         if (resp.ok) {
             clemencyData = await resp.json();
-            console.log('Loaded ' + clemencyData.length + ' real clemency data points');
-        } else { throw new Error('not found'); }
-    } catch (e) {
-        console.log('Using generated fallback data');
-        clemencyData = generateFallbackData();
-        console.log('Generated ' + clemencyData.length + ' fallback data points');
-    }
+            if (Array.isArray(clemencyData) && clemencyData.length > 0) {
+                console.log('Loaded ' + clemencyData.length + ' data points from local file');
+                return;
+            }
+        }
+    } catch (e) { console.log('Local file not available, using fallback data'); }
+
+    // Final fallback: generate synthetic data
+    console.log('Using generated fallback data');
+    clemencyData = generateFallbackData();
+    console.log('Generated ' + clemencyData.length + ' fallback data points');
 }
 
 window.addEventListener('load', async function() {
