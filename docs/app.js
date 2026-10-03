@@ -401,21 +401,18 @@ function analyzeRoute(routeCoords) {
 }
 
 async function findRoute() {
-    if (!startCoords) {
-        var si = document.getElementById('start-input').value.trim();
-        if (si) {
-            startCoords = await geocode(si);
-            if (!startCoords) { document.getElementById('results').innerHTML = '<p class="error">Could not find "' + si + '". Try a street address, city, ZIP code, landmark, or coordinates.</p>'; return; }
-            setStart(startCoords.lat, startCoords.lon);
-        }
+    // Always re-read input fields — if they have content, geocode fresh (overrides cached coords)
+    var si = document.getElementById('start-input').value.trim();
+    if (si) {
+        var sc = await geocode(si);
+        if (sc) { setStart(sc.lat, sc.lon); }
+        else { document.getElementById('results').innerHTML = '<p class="error">Could not find "' + si + '". Try a street address, city, ZIP code, landmark, or coordinates.</p>'; return; }
     }
-    if (!endCoords) {
-        var ei = document.getElementById('end-input').value.trim();
-        if (ei) {
-            endCoords = await geocode(ei);
-            if (!endCoords) { document.getElementById('results').innerHTML = '<p class="error">Could not find "' + ei + '". Try a street address, city, ZIP code, landmark, or coordinates.</p>'; return; }
-            setEnd(endCoords.lat, endCoords.lon);
-        }
+    var ei = document.getElementById('end-input').value.trim();
+    if (ei) {
+        var ec = await geocode(ei);
+        if (ec) { setEnd(ec.lat, ec.lon); }
+        else { document.getElementById('results').innerHTML = '<p class="error">Could not find "' + ei + '". Try a street address, city, ZIP code, landmark, or coordinates.</p>'; return; }
     }
     if (!startCoords || !endCoords) { alert('Please set both start and end locations.'); return; }
 
