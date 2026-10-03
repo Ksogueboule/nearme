@@ -103,7 +103,15 @@ def api_chat():
             "- IRWIN Wildland Fires (fire size, containment)\n\n"
             "Routes are scored 0-1 severity and classified: Benign, Mild, Moderate, Severe, Extreme. "
             "The app finds the safest route by minimizing total environmental severity via A* pathfinding.\n"
-            "Keep answers concise (2-3 sentences). Be helpful and specific."
+            "Keep answers concise (2-3 sentences). Be helpful and specific.\n\n"
+            "ACTION PROTOCOL: If the user asks to find a route, plan a trip, or set start/end locations, "
+            "append an action directive at the END of your response in this exact format:\n"
+            '[ACTION:{"type":"find_route","start":"City, NC","end":"City, NC"}]\n'
+            "For setting only start or end:\n"
+            '[ACTION:{"type":"set_start","location":"City, NC"}]\n'
+            '[ACTION:{"type":"set_end","location":"City, NC"}]\n'
+            "Only include the action block when the user explicitly requests a route or location. "
+            "Do not include it for informational questions. Use full place names (e.g. 'Raleigh, NC')."
         )
 
         if ctx:
