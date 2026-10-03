@@ -1,0 +1,16 @@
+# Environment variables
+.env
+nearme/.env
+
+# Raw ingestion data (large JSON files)
+volume/
+
+# Python
+__pycache__/
+*.pyc
+
+# Databricks
+*.dbc
+
+# OS
+.DS_Store
