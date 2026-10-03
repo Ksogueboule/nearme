@@ -7,6 +7,7 @@ let startMarker = null, endMarker = null;
 let routeLayer = null, altRouteLayer = null, severityLayer = null, hazardLayer = null;
 let allDataLayer = null, allDataVisible = false;
 let heatmapLayer = null, heatmapVisible = false;
+let weatherLayer = null, weatherVisible = false;
 let startCoords = null, endCoords = null;
 
 const CLEMENCY_COLORS = {
@@ -141,6 +142,68 @@ function toggleHeatmap() {
         var btn = document.getElementById('toggle-heatmap-btn');
         btn.textContent = 'Hide Heatmap';
         btn.classList.add('active');
+    }
+}
+
+// Toggle weather overlay from Open-Meteo API
+function weatherDesc(code) {
+    var c = {
+        0:'\u2600\u-fe0f Clear',1:'\u26c5 Mainly clear',2:'\u26c5 Partly cloudy',3:'\u2601\u-fe0f Overcast',
+        45:'\u{1f32b}\u-fe0f Fog',48:'\u{1f32b}\u-fe0f Rime fog',
+        51:'\u{1f326}\u-fe0f Light drizzle',53:'\u{1f326}\u-fe0f Drizzle',55:'\u{1f327}\u-fe0f Heavy drizzle',
+        61:'\u{1f327}\u-fe0f Light rain',63:'\u{1f327}\u-fe0f Rain',65:'\u{1f327}\u-fe0f Heavy rain',
+        71:'\u{1f328}\u-fe0f Light snow',73:'\u{1f328}\u-fe0f Snow',75:'\u2744\u-fe0f Heavy snow',
+        80:'\u{1f326}\u-fe0f Rain showers',81:'\u{1f327}\u-fe0f Rain showers',82:'\u26c8\u-fe0f Violent showers',
+        95:'\u26c8\u-fe0f Thunderstorm',96:'\u26c8\u-fe0f T-storm + hail',99:'\u26c8\u-fe0f T-storm + hail'
+    };
+    return c[code] || 'Weather code ' + code;
+}
+
+async function toggleWeather() {
+    var btn = document.getElementById('toggle-weather-btn');
+    if (weatherVisible) {
+        if (weatherLayer) map.removeLayer(weatherLayer);
+        weatherVisible = false;
+        btn.textContent = 'Show Weather';
+        btn.classList.remove('active');
+        return;
+    }
+    btn.textContent = 'Loading weather...';
+    // Grid of ~35 points across NC
+    var lats = [33.5,34.0,34.5,35.0,35.5,36.0,36.5];
+    var lons = [-84.0,-82.0,-80.0,-78.0,-76.0];
+    var pts = [];
+    for (var i = 0; i < lats.length; i++)
+        for (var j = 0; j < lons.length; j++)
+            pts.push([lats[i], lons[j]]);
+    try {
+        var resp = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' +
+            pts.map(p => p[0]).join(',') + '&longitude=' + pts.map(p => p[1]).join(',') +
+            '&current=temperature_2m,precipitation,wind_speed_10m,weather_code,relative_humidity_2m' +
+            '&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch');
+        var data = await resp.json();
+        var wd = Array.isArray(data) ? data : [data];
+        if (weatherLayer) map.removeLayer(weatherLayer);
+        weatherLayer = L.layerGroup();
+        for (var i = 0; i < pts.length && i < wd.length; i++) {
+            var w = wd[i]; if (!w.current) continue;
+            var t = w.current.temperature_2m, p = w.current.precipitation;
+            var ws = w.current.wind_speed_10m, code = w.current.weather_code, h = w.current.relative_humidity_2m;
+            var c = t < 32 ? '#3498db' : t < 50 ? '#1abc9c' : t < 70 ? '#2ecc71' : t < 85 ? '#e67e22' : '#e74c3c';
+            L.circleMarker([pts[i][0], pts[i][1]], { radius: 8, color: c, fillColor: c, fillOpacity: 0.7, weight: 2 })
+                .bindPopup('<b>Weather ' + weatherDesc(code) + '</b><br>' +
+                    Math.round(t) + '\u00b0F \u00b7 ' + p + '" precip<br>' +
+                    Math.round(ws) + ' mph wind \u00b7 ' + h + '% humidity')
+                .addTo(weatherLayer);
+        }
+        weatherLayer.addTo(map);
+        weatherVisible = true;
+        btn.textContent = 'Hide Weather';
+        btn.classList.add('active');
+    } catch (e) {
+        console.error('Weather fetch failed:', e);
+        btn.textContent = 'Show Weather';
+        btn.classList.remove('active');
     }
 }
 
@@ -672,6 +735,12 @@ async function refreshData() {
                 if (heatmapLayer) { map.removeLayer(heatmapLayer); heatmapLayer = null; }
                 heatmapVisible = false;
                 toggleHeatmap();
+            }
+            // Rebuild weather if visible
+            if (weatherVisible) {
+                if (weatherLayer) { map.removeLayer(weatherLayer); weatherLayer = null; }
+                weatherVisible = false;
+                toggleWeather();
             }
         } else {
             console.log('Data refreshed: no changes detected');
