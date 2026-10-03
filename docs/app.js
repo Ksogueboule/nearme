@@ -14,6 +14,31 @@ const CLEMENCY_COLORS = {
     Severe: '#e74c3c', Extreme: '#8e44ad'
 };
 
+// Data source type colors and labels
+function sourceColor(src) {
+    var s = (src || '').toLowerCase();
+    if (s.indexOf('epa') >= 0 || s.indexOf('air') >= 0) return '#9b59b6';
+    if (s.indexOf('noaa') >= 0 || s.indexOf('weather') >= 0) return '#00bfff';
+    if (s.indexOf('usgs') >= 0 || s.indexOf('water') >= 0 || s.indexOf('gage') >= 0) return '#2980b9';
+    if (s.indexOf('ncdot') >= 0 || s.indexOf('crash') >= 0 || s.indexOf('traffic') >= 0) return '#e74c3c';
+    if (s.indexOf('ncgs') >= 0 || s.indexOf('landslide') >= 0) return '#e67e22';
+    if (s.indexOf('ncem') >= 0 || s.indexOf('flood') >= 0) return '#16a085';
+    if (s.indexOf('irwin') >= 0 || s.indexOf('fire') >= 0) return '#c0392b';
+    return '#95a5a6';
+}
+
+function sourceLabel(src) {
+    var s = (src || '').toLowerCase();
+    if (s.indexOf('epa') >= 0 || s.indexOf('air') >= 0) return 'EPA Air Quality';
+    if (s.indexOf('noaa') >= 0 || s.indexOf('weather') >= 0) return 'NOAA Weather';
+    if (s.indexOf('usgs') >= 0 || s.indexOf('water') >= 0) return 'USGS Water';
+    if (s.indexOf('ncdot') >= 0 || s.indexOf('crash') >= 0) return 'NCDOT Crashes';
+    if (s.indexOf('ncgs') >= 0 || s.indexOf('landslide') >= 0) return 'NCGS Landslides';
+    if (s.indexOf('ncem') >= 0 || s.indexOf('flood') >= 0) return 'NCEM Flood Zones';
+    if (s.indexOf('irwin') >= 0 || s.indexOf('fire') >= 0) return 'IRWIN Wildland Fires';
+    return src || 'Unknown';
+}
+
 // API base URL — same-origin on Databricks app, cross-origin from GitHub Pages
 var API_BASE = window.location.hostname.includes('databricksapps.com')
     ? ''
@@ -129,11 +154,12 @@ function toggleAllData() {
         allDataLayer = L.layerGroup();
         for (var i = 0; i < clemencyData.length; i++) {
             var pt = clemencyData[i];
-            var c = sevColor(pt[2]);
+            var sc = sourceColor(pt[4]);
+            var sv = sevColor(pt[2]);
             L.circleMarker([pt[0], pt[1]], {
-                radius: 3, color: c, fillColor: c, fillOpacity: 0.5, weight: 1
+                radius: 4, color: sv, fillColor: sc, fillOpacity: 0.6, weight: 1
             }).bindPopup(
-                '<b>' + pt[4] + '</b><br>Severity: ' + pt[2].toFixed(2) + ' (' + pt[5] + ')<br>' + (pt[6] || '')
+                '<b>' + sourceLabel(pt[4]) + '</b><br>Source: ' + (pt[4] || 'Unknown') + '<br>Severity: ' + pt[2].toFixed(2) + ' (' + pt[5] + ')<br>' + (pt[6] || '')
             ).addTo(allDataLayer);
         }
     }

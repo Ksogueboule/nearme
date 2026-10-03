@@ -63,6 +63,13 @@ button {
 .export-btn.gmaps:hover { background: #d35400; }
 .export-btn.apple { background: #555; }
 .export-btn.apple:hover { background: #333; }
+.dot.src-epa { background: #9b59b6; }
+.dot.src-noaa { background: #00bfff; }
+.dot.src-usgs { background: #2980b9; }
+.dot.src-ncdot { background: #e74c3c; }
+.dot.src-ncgs { background: #e67e22; }
+.dot.src-ncem { background: #16a085; }
+.dot.src-irwin { background: #c0392b; }
 
 .data-status {
     font-size: 11px; color: #888; margin: 4px 0 10px; display: flex; align-items: center; gap: 6px;
