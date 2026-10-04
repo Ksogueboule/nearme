@@ -1,3 +1,5 @@
+Team: Code Crafters
+Team Members: Kadin Ogueboule and Pujit Varma Muppala
 # NearMe
 
 **NearMe** is a hazard-aware routing platform built for **WolfHacks 2026** that helps users find routes across North Carolina while considering environmental and safety conditions.
@@ -523,6 +525,7 @@ Instead of simply showing hazards, NearMe uses them to answer:
 ## Deployment
 
 NearMe supports two deployment approaches.
+Databricks Deployed application actively pulls data and the Github deployed application uses static data.
 
 ### Live Backend Mode
 
@@ -547,6 +550,14 @@ GitHub Pages
 This dual approach allows the application to remain demonstrable even if the live backend is unavailable.
 
 ---
+
+AI Usage
+
+We used Databricks Genie Code and other AI-assisted development tools as part of our engineering workflow.
+
+AI was primarily used to accelerate prototyping, suggest implementation patterns, assist with debugging, and help refine portions of the codebase. The team remained responsible for validating outputs, designing the overall system architecture, integrating the data pipeline, defining the clemency and severity logic, and testing the final application.
+
+Rather than treating AI as a black-box solution, we used it as a collaborative development tool to iterate faster while maintaining human oversight over technical decisions, data processing, model behavior, and final implementation. 
 
 ## Challenges
 
